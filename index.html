@@ -96,6 +96,7 @@ form{display:grid;gap:14px;min-width:0}
 label{display:grid;gap:6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
 input,select,textarea{font:inherit;font-family:var(--body);text-transform:none;letter-spacing:0;font-size:1rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-bottom:2px solid var(--ink);padding:12px;width:100%;box-sizing:border-box;border-radius:0}
 textarea{min-height:130px;resize:vertical}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 .sent{border-left:4px solid var(--signal);padding:10px 14px;background:var(--surface)}
 .email{font-family:var(--mono);font-size:1.05rem;user-select:all;word-break:break-all}
 footer{border-top:2px solid var(--ink)}
@@ -202,10 +203,14 @@ footer .wrap{padding-block:26px;display:flex;justify-content:space-between;gap:1
   <div class="prose" style="display:grid;gap:14px">
     <span class="kicker">Contact</span>
     <h2>Bookings, sponsors, questions.</h2>
-    <p style="color:var(--soft)">Reach Ritch's studio inbox at:</p>
+    <p style="color:var(--soft)">Messages go straight to Ritch's studio inbox. Or email:</p>
     <p class="email">rcmediabrand@outlook.com</p>
   </div>
-  <form id="contact-form" novalidate>
+  <form id="contact-form" action="https://api.web3forms.com/submit" method="POST" novalidate>
+    <input type="hidden" name="access_key" value="9a70add9-d6a2-452b-8188-170310b6957f">
+    <input type="hidden" name="subject" value="New message from cassidycountry.com">
+    <input type="hidden" name="from_name" value="cassidycountry.com">
+    <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     <div class="row">
       <label for="c-name">Name<input id="c-name" name="name" autocomplete="name" required></label>
       <label for="c-email">Email<input id="c-email" name="email" type="email" autocomplete="email" required></label>
@@ -214,8 +219,8 @@ footer .wrap{padding-block:26px;display:flex;justify-content:space-between;gap:1
       <select id="c-topic" name="topic"><option>Booking or appearance</option><option>Advertising or sponsorship</option><option>Merch question</option><option>Just saying howdy</option></select>
     </label>
     <label for="c-msg">Message<textarea id="c-msg" name="message" required></textarea></label>
-    <div><button class="btn go" type="submit">Send</button></div>
-    <p class="sent" id="c-sent" hidden>Thanks! The contact form is still being hooked up. For now, please email rcmediabrand@outlook.com.</p>
+    <div><button class="btn go" type="submit" id="c-send">Send</button></div>
+    <p class="sent" id="c-sent" role="status" aria-live="polite" hidden></p>
   </form>
 </div></section>
 
@@ -225,7 +230,29 @@ footer .wrap{padding-block:26px;display:flex;justify-content:space-between;gap:1
 </div></footer>
 
 <script>
-document.getElementById('contact-form').addEventListener('submit',function(e){e.preventDefault();document.getElementById('c-sent').hidden=false;});
+(function(){
+  var form=document.getElementById('contact-form'), btn=document.getElementById('c-send'), out=document.getElementById('c-sent');
+  var FALLBACK='please email rcmediabrand@outlook.com.';
+  function say(msg){out.textContent=msg;out.hidden=false;}
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    var name=form.elements['name'].value.trim(), email=form.elements['email'].value.trim(), msg=form.elements['message'].value.trim();
+    if(!name||!email||!msg){say('Please fill in your name, email and message.');return;}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){say('That email address looks off. Please check it and try again.');return;}
+    if(form.elements['access_key'].value==='WEB3FORMS_ACCESS_KEY'){say('The contact form is almost ready. For now, '+FALLBACK);return;}
+    btn.disabled=true;btn.textContent='Sending…';
+    var data=new FormData(form);
+    data.set('subject','cassidycountry.com: '+form.elements['topic'].value+' from '+name);
+    fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Accept':'application/json'},body:data})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(j&&j.success){form.reset();say('Thanks, '+name+'. Your message is on its way to Ritch.');}
+        else{say('That didn\'t go through. Please try again, or '+FALLBACK);}
+      })
+      .catch(function(){say('That didn\'t go through. Please try again, or '+FALLBACK);})
+      .finally(function(){btn.disabled=false;btn.textContent='Send';});
+  });
+})();
 </script>
 </body>
 </html>
